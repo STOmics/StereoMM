@@ -1,1 +1,56 @@
 # StereoMM
+## Overview
+StereoMM is a graph fusion model that can integrate gene expression, histological images, and spatial location. And the information interaction within modalities is strengthened by introducing an attention mechanism. StereoMM firstly performs information interaction on transcriptomic and imaging features through the attention module. The interactive features are input into the graph autoencoder together with the graph of spatial position, so that multimodal features are fused in a self-supervised manner. Finally, a low-dimensional, noise-reducing, higher-quality feature representation is obtained by extracting the features of the latent space. StereoMM contribute to accurately identify domains, uncover the more significant molecule characteristics among different domains and pave ways for downstream analysis.
+## StereoMM software package
+StereoMM relies on pytorch and pyg. In order to create a working environment, we recommend the following installation code：
+```
+conda create -n stereoMM python==3.9
+conda activate stereoMM
+conda install pytorch==2.0.1 torchvision==0.15.2 torchaudio==2.0.2 pytorch-cuda=11.7 -c pytorch -c nvidia
+conda install pyg -c pyg
+# check gpu availiable
+python print_cuda.py
+
+## essential packages
+conda install -c conda-forge scanpy python-igraph leidenalg
+```
+## Usage
+For real data：
+Step1：Process imaging data, including tiling and feature extraction through CNN.
+```
+python process_img.py -a example/adata.h5ad -i example/image.tif -o example/image_out -b 100 -c 150
+```
+Step2：Construct a StereoMM model and perform feature fusion.
+```
+python __main__.py --rna_data example/adata.h5ad --image_data example/image_out/img_feat.pkl -o example/real_test_nn --epochs 100 --lr 0.0001 --radiu_cutoff 100 --hidden_dims 2048 256 --latent_dim 100 --docoder_type GCN --opt adam --dim_reduction_method high_var --scale zscore --num_head 1 --decoder --brief_att
+```
+We also provide simulated data for model testing, using the -t parameter:
+```
+python __main__.py /__main__.py -t -o example/toy_test --epochs 30 --lr 0.001 --radiu_cutoff 100 --hidden_dims 1028 256 --latent_dim 100 --gnn_type GCN --opt adam --dim_reduction_method high_var --scale zscore --num_heads 4 --decoder --brief_att
+```
+The output folder contains embedding.pkl/csv, that is the new feature representation file.
+### Parameter Description
+(1) --version: Boolean switch, print the current software version;
+(2) --sessioninfo: Boolean switch, print the version of each reference library in the current environment;
+(3) --verbose: Boolean switch, print the monitoring status of CUDA memory usage during the training process;
+(4) --toy: Boolean switch, the input uses simulation data to run the program;
+(5) --rna_data: string, reading path of transcriptome data;
+(6) --image_data: string, the reading path of H&E imaging data;
+(7) --output: string, output result storage path;
+(8) --epochs: integer, the number of iterations of model training, the default is 100;
+(9) --lr: floating point number, learning rate for model training, default is 0.0001;
+(10) --opt: string, optimizer for model training, default is 'adam';
+(11) --dim_reduction_method: string, feature extraction method for transcriptome data, default is 'high_var';
+(12) --scale: string, standardization method of single-modal features, the default is 'zscore';
+(13) --radiu_cutoff: integer or empty data, the radius threshold when constructing the position coordinate KNN, the default is empty;
+(14) --purning: Boolean switch, input to prune the position coordinate KNN graph;
+(15) --num_heads: integer, the number of attention heads of the attention module, the default is 1;
+(16) --hidden_dims: integer, the number of nodes in the hidden layer of the VGAE module, the default is [2048,128];
+(17) --latent_dim: integer, the dimension of the mean and variance of the latent space of the VGAE module, the default is 100;
+(18) --brief_att: Boolean switch, the input uses the attention version with a reduced number of parameters;
+(19) --att_mode: string, the running mode of the attention module, optional 'cross', 'img', 'rna', 'self', the default is 'cross';
+(20) --decoder: Boolean switch, the input is to reconstruct the graph node characteristics in the VGAE module, otherwise the graph structure is reconstructed;
+(21) --gnn_type: string, the type of graph neural network in the VGAE module, optional 'GAT', 'GCN', 'GraphSAGE', the default is 'GCN';
+(22) --dec: Boolean switch, the input is to add the DEC module during the training process;
+(23) --rna_weight: integer, the weight of rna feature during feature concat, the default is 1.
+(24) --n_cluster: integer, the final number of categories in the clustering process, the default is 10;
